@@ -1,0 +1,26 @@
+{
+  "name": "nous-excellence",
+  "version": "1.0.0",
+  "description": "NOUS Excellence - Sistema profissional de gestao para unidades de alimentacao",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "seed": "node server/seed.js",
+    "db:push:supabase": "node scripts/supabase-migrate.mjs",
+    "db:check:supabase": "node scripts/supabase-check.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "pg": "^8.23.1"
+  }
+}

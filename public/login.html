@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Entrar • NOUS Excellence</title>
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="login-wrap">
+  <form class="login-card" id="loginForm">
+    <div class="brand">NOUS</div>
+    <div class="pilot">EXCELLENCE</div>
+    <label for="email">E-mail</label>
+    <input id="email" name="email" type="email" autocomplete="username" required>
+    <label for="password">Senha</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button class="btn" type="submit">Entrar</button>
+    <div class="login-err" id="err"></div>
+    <div class="hint">
+      <b>Acessos de demonstração:</b><br>
+      RT: rt@nous.com / rt123<br>
+      Cozinha: cozinha@nous.com / cozinha123<br>
+      Gestor: gestor@nous.com / gestor123
+    </div>
+  </form>
+</div>
+<script type="module">
+import { api } from '/js/api.js';
+
+// Se ja estiver logado, vai direto para o app
+api.get('/api/auth/me').then(() => location.href = '/').catch(() => {});
+
+const form = document.getElementById('loginForm');
+const err = document.getElementById('err');
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  err.textContent = '';
+  const btn = form.querySelector('button');
+  btn.disabled = true;
+  try {
+    await api.post('/api/auth/login', {
+      email: document.getElementById('email').value,
+      password: document.getElementById('password').value,
+    });
+    location.href = '/';
+  } catch (ex) {
+    err.textContent = ex.message || 'Falha no login';
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+:root{
+  --b:#574126;--g:#dda543;--bg:#f7f4ee;--c:#fff;--ln:#e7dfd3;--t:#302a24;--m:#786f65;
+  --ok:#2d7750;--w:#a76b13;--bad:#a33b38;
+  /* espacamentos fluidos */
+  --gap:clamp(10px,1.4vw,14px);
+  --pad:clamp(14px,2vw + 6px,26px);
+  --card-pad:clamp(13px,1.4vw,16px);
+  --radius:14px;
+  --sidebar-w:260px;
+  --shadow:0 1px 3px rgba(87,65,38,.06),0 6px 24px rgba(87,65,38,.05);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--t);font-size:clamp(14px,.85rem + .2vw,15px);line-height:1.5}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}
+img{max-width:100%}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh;min-height:100dvh}
+aside{background:#fff;border-right:1px solid var(--ln);padding:18px 14px;position:sticky;top:0;height:100vh;height:100dvh;overflow:auto}
+main{padding:var(--pad);max-width:1500px;width:100%;min-width:0}
+
+/* ---------- marca / sidebar ---------- */
+.brand{font-size:clamp(1.3rem,1.1rem + 1vw,1.6rem);font-weight:800;color:var(--b);letter-spacing:.5px}
+.pilot{font-size:11px;color:var(--g);font-weight:700;letter-spacing:.8px;margin:2px 7px 15px}
+.userbox{background:#fbf8f2;border:1px solid var(--ln);padding:10px;border-radius:12px;margin-bottom:12px}
+.userbox b{color:var(--b)}
+nav button{width:100%;border:0;background:transparent;text-align:left;padding:11px 10px;border-radius:9px;margin:2px 0;color:var(--t);min-height:44px}
+nav button:hover,nav button.on{background:#f4ead8;color:var(--b);font-weight:700}
+
+/* ---------- cabecalho ---------- */
+.head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.head-titles{min-width:0}
+.head h1{margin:0;font-size:clamp(1.25rem,1rem + 1.4vw,1.55rem);color:var(--b);line-height:1.2}
+.menu-toggle{display:none;flex-direction:column;justify-content:center;gap:5px;width:44px;height:44px;border:1px solid var(--ln);background:#fff;border-radius:10px;padding:0 11px;flex:0 0 auto}
+.menu-toggle span{display:block;height:2px;background:var(--b);border-radius:2px;transition:.25s}
+.menu-toggle[aria-expanded="true"] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.menu-toggle[aria-expanded="true"] span:nth-child(2){opacity:0}
+.menu-toggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+
+/* ---------- tipografia auxiliar ---------- */
+label{display:block;font-size:12px;color:var(--m);margin-bottom:4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #dcd3c7;border-radius:8px;background:#fff;min-height:42px}
+textarea{min-height:76px;resize:vertical}
+.small{font-size:12px;color:var(--m)}
+p{max-width:70ch}
+
+/* ---------- badges ---------- */
+.badge{display:inline-block;padding:5px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.ok{background:#e7f3eb;color:var(--ok)}.warn{background:#fff0d9;color:var(--w)}.bad{background:#f8e4e4;color:var(--bad)}
+
+/* ---------- paginas / cards ---------- */
+.page{display:none}.page.on{display:block}
+.card{background:#fff;border:1px solid var(--ln);border-radius:var(--radius);padding:var(--card-pad);box-shadow:var(--shadow)}
+.card h2{font-size:clamp(1rem,.92rem + .4vw,1.15rem);color:var(--b);margin:0 0 12px}
+
+/* grids fluidas: se reorganizam sozinhas conforme o espaco disponivel */
+.grid4{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:var(--gap)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:var(--gap)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:var(--gap)}
+.section{margin-top:var(--gap)}
+
+.kpi span{font-size:12px;color:var(--m)}
+.kpi b{display:block;font-size:clamp(1.25rem,1rem + 1.2vw,1.55rem);color:var(--b);margin:7px 0}
+
+.btn{border:0;background:var(--b);color:#fff;padding:11px 14px;border-radius:9px;min-height:44px;font-weight:600}
+.btn:hover{filter:brightness(1.05)}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.gold{background:var(--g)}
+.mini{border:1px solid var(--ln);background:#fff;padding:8px 10px;border-radius:8px;min-height:38px}
+.mini:hover{background:#faf6ee}
+
+/* formularios fluidos */
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.full{grid-column:1/-1}
+
+.quick{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.quick button{background:#fff;border:1px solid var(--ln);border-radius:12px;padding:14px;text-align:left;min-height:64px}
+.quick button:hover{border-color:var(--g);background:#fffdf8}
+.quick b{display:block;color:var(--b);margin-bottom:4px}
+
+/* ---------- tabela ---------- */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{font-size:13px;padding:10px 8px;border-bottom:1px solid var(--ln);text-align:left}
+th{background:#fbf8f2;position:sticky;top:0}
+
+/* ---------- itens diversos ---------- */
+.day{border:1px solid var(--ln);border-radius:12px;padding:13px;margin-bottom:9px}
+.today{border:2px solid var(--g);background:#fffdf8}
+.row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--ln);flex-wrap:wrap}
+.row:last-child{border:0}
+.notice{padding:11px;border:1px solid #ead8b8;background:#fff8eb;border-radius:10px;font-size:13px}
+.docactions,.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.bar{height:10px;background:#eee7dc;border-radius:999px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--g)}
+
+/* ---------- toast ---------- */
+.toast{position:fixed;bottom:20px;right:20px;left:20px;margin:0 auto;max-width:340px;background:var(--b);color:#fff;padding:12px 16px;border-radius:10px;opacity:0;transform:translateY(10px);transition:.25s;z-index:99;box-shadow:var(--shadow)}
+.toast.show{opacity:1;transform:none}
+.toast.err{background:var(--bad)}
+@media(min-width:560px){.toast{left:auto}}
+
+/* ---------- scrim (overlay do drawer) ---------- */
+.scrim{position:fixed;inset:0;background:rgba(48,42,36,.45);opacity:0;visibility:hidden;transition:.25s;z-index:40}
+.scrim.show{opacity:1;visibility:visible}
+
+/* ---------- login ---------- */
+.login-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-card{background:#fff;border:1px solid var(--ln);border-radius:16px;padding:clamp(22px,5vw,32px);width:100%;max-width:390px;box-shadow:0 10px 40px rgba(87,65,38,.08)}
+.login-card .brand{font-size:clamp(1.6rem,1.2rem + 2vw,1.9rem);text-align:center}
+.login-card .pilot{text-align:center;margin-bottom:18px}
+.login-card label{margin-top:12px}
+.login-card .btn{width:100%;margin-top:18px}
+.login-err{color:var(--bad);font-size:13px;margin-top:12px;min-height:18px}
+.hint{margin-top:18px;font-size:12px;color:var(--m);border-top:1px solid var(--ln);padding-top:12px;line-height:1.7}
+
+/* ============ RESPONSIVO: drawer no mobile ============ */
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}
+  aside{position:fixed;top:0;left:0;bottom:0;width:min(84vw,300px);height:100vh;height:100dvh;
+    transform:translateX(-100%);transition:transform .25s ease;z-index:50;border-right:1px solid var(--ln);box-shadow:2px 0 24px rgba(0,0,0,.12)}
+  aside.open{transform:none}
+  .menu-toggle{display:flex}
+  .head{position:sticky;top:0;background:var(--bg);padding-block:6px;z-index:30;margin-inline:calc(var(--pad) * -1);padding-inline:var(--pad)}
+}
+
+/* ============ RESPONSIVO: tabela vira cartoes empilhados ============ */
+@media(max-width:640px){
+  table.resp{min-width:0}
+  table.resp thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  table.resp tr{display:block;border:1px solid var(--ln);border-radius:12px;padding:6px 10px;margin-bottom:10px;background:#fff}
+  table.resp td{display:flex;justify-content:space-between;align-items:baseline;gap:14px;border:0;border-bottom:1px dashed var(--ln);padding:8px 0;text-align:right}
+  table.resp td:last-child{border-bottom:0}
+  table.resp td::before{content:attr(data-label);font-weight:700;color:var(--m);text-align:left;flex:0 0 auto}
+}
+
+/* ============ acessibilidade ============ */
+:focus-visible{outline:3px solid rgba(221,165,67,.6);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none !important;animation:none !important}
+}

@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NOUS Excellence</title>
+<link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+<div class="scrim" id="scrim" hidden></div>
+<div class="app">
+  <aside id="sidebar" aria-label="Navegação principal">
+    <div class="brand">NOUS</div>
+    <div class="pilot">EXCELLENCE</div>
+    <div class="userbox">
+      <div class="small">Conectado como</div>
+      <b id="userName">—</b>
+      <div class="small" id="userRole">—</div>
+      <button class="mini" style="width:100%;margin-top:8px" id="logoutBtn">Sair</button>
+    </div>
+    <nav id="nav"></nav>
+  </aside>
+
+  <main>
+    <div class="head">
+      <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-controls="sidebar" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="head-titles"><h1 id="title">NOUS Excellence</h1><div class="small" id="unitName">Torquatu's • NOUS Excellence</div></div>
+      <span class="badge ok" id="unitBadge">● Unidade ativa</span>
+    </div>
+
+    <!-- RT Home -->
+    <section id="rtHome" class="page"><div id="rtKpi" class="grid4"></div>
+      <div class="section grid2">
+        <div class="card"><h2>Gestão técnica</h2><div class="quick">
+          <button data-go="menus"><b>📅 Cardápio mensal</b><span class="small">Montar e publicar mês</span></button>
+          <button data-go="sheets"><b>📋 Fichas técnicas</b><span class="small">Modelo técnico completo</span></button>
+          <button data-go="employees"><b>👥 Funcionários</b><span class="small">Cursos e carteira sanitária</span></button>
+          <button data-go="docs"><b>📁 Documentos</b><span class="small">Controle documental</span></button>
+          <button data-go="quality"><b>🌡 Qualidade</b><span class="small">Temperaturas e amostras</span></button>
+          <button data-go="costs"><b>💰 Custos</b><span class="small">Resultado diário</span></button>
+        </div></div>
+        <div class="card"><h2>Atenção da RT</h2><div id="rtAlerts"></div></div>
+      </div>
+    </section>
+
+    <!-- Kitchen Home -->
+    <section id="kitchenHome" class="page">
+      <div class="card"><h2>Cardápio de hoje</h2><div id="kToday"></div></div>
+      <div class="section quick">
+        <button data-go="production"><b>🍲 Produção do dia</b><span class="small">Abrir preparações</span></button>
+        <button data-go="quality"><b>🌡 Temperatura / amostra</b><span class="small">Registrar</span></button>
+        <button data-go="menus"><b>📅 Cardápio do mês</b><span class="small">Consultar</span></button>
+        <button data-go="docs"><b>📖 POPs</b><span class="small">Visualizar / baixar</span></button>
+      </div>
+    </section>
+
+    <!-- Manager Home -->
+    <section id="managerHome" class="page"><div id="mgrKpi" class="grid4"></div>
+      <div class="section grid2">
+        <div class="card"><h2>Resultado dos últimos dias</h2><div id="dayResults"></div></div>
+        <div class="card"><h2>Visão do negócio</h2><div id="mgrSummary"></div></div>
+      </div>
+      <div class="section quick">
+        <button data-go="docs"><b>📁 Documentos</b><span class="small">Visualizar / baixar</span></button>
+        <button data-go="menus"><b>📅 Cardápios</b><span class="small">Consultar mês</span></button>
+        <button data-go="managerEdit"><b>✏️ Dados do dia</b><span class="small">Refeições e receita</span></button>
+      </div>
+    </section>
+
+    <!-- Menus -->
+    <section id="menus" class="page">
+      <div class="grid2">
+        <div class="card rtOnly"><h2>Adicionar dia ao cardápio mensal</h2>
+          <form id="menuForm" class="form">
+            <div><label>Data</label><input name="date" type="date" required></div>
+            <div class="full"><label>Preparações — uma por linha</label><textarea name="items" required></textarea></div>
+            <div class="full"><button class="btn">Adicionar ao mês</button></div>
+          </form>
+          <div class="notice section">Você monta vários dias e depois publica o mês inteiro. Não precisa publicar dia por dia.</div>
+          <button class="btn gold section" id="publishBtn">PUBLICAR CARDÁPIO DO MÊS</button>
+        </div>
+        <div class="card"><h2>Cardápio mensal</h2><p class="small">Ao publicar, cada dia fica disponível automaticamente para cozinha e gestor.</p><div id="menuStatus"></div></div>
+      </div>
+      <div class="card section"><div id="menuList"></div></div>
+    </section>
+
+    <!-- Sheets -->
+    <section id="sheets" class="page">
+      <div class="grid2">
+        <div class="card rtOnly"><h2>Nova ficha técnica</h2>
+          <form id="sheetForm" class="form">
+            <div><label>Preparação</label><input name="prep" required></div>
+            <div><label>Categoria</label><input name="cat"></div>
+            <div class="full"><label>Ingredientes</label><textarea name="ingredients" required placeholder="Arroz | 5 kg&#10;Óleo | 0,3 L"></textarea></div>
+            <div><label>Rendimento padrão</label><input name="yield" required placeholder="13,2 kg"></div>
+            <div><label>Custo total da receita (R$)</label><input name="cost" type="number" step=".01" required></div>
+            <div class="full"><label>Modo de preparo</label><textarea name="method" required></textarea></div>
+            <div><label>Revisão</label><input name="rev" placeholder="01"></div>
+            <div><label>Observações</label><input name="obs"></div>
+            <div class="full"><button class="btn">Salvar ficha técnica</button></div>
+          </form>
+        </div>
+        <div class="card"><h2>Modelo NOUS</h2><p class="small">A ficha fica disponível em modelo padronizado com ingredientes, pesos/quantidades, modo de preparo, rendimento, custo, revisão e observações. A cozinha consulta a versão operacional sem valores financeiros.</p></div>
+      </div>
+      <div id="sheetCards" class="section grid3"></div>
+    </section>
+
+    <!-- Production -->
+    <section id="production" class="page">
+      <div class="card"><h2>Produção do dia</h2>
+        <div class="notice">A produção parte do cardápio e da ficha técnica. A cozinha consulta o padrão e informa apenas a quantidade de receitas/lotes.</div>
+        <div id="prodList" class="section"></div>
+      </div>
+    </section>
+
+    <!-- Docs -->
+    <section id="docs" class="page">
+      <div class="grid2">
+        <div class="card rtOnly"><h2>Adicionar documento</h2>
+          <form id="docForm" class="form">
+            <div><label>Documento</label><select name="type" id="docType"></select></div>
+            <div><label>Validade</label><input name="expiry" type="date"></div>
+            <div class="full"><label>Arquivo (PDF, PNG, JPG, WEBP — até 10 MB)</label><input name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp"></div>
+            <div class="full"><button class="btn">Anexar</button></div>
+          </form>
+        </div>
+        <div class="card"><h2>Controle documental</h2><p class="small">A RT administra a documentação. O gestor visualiza e baixa. No acesso da cozinha, somente POPs ficam visíveis.</p></div>
+      </div>
+      <div id="docCards" class="section grid3"></div>
+    </section>
+
+    <!-- Employees -->
+    <section id="employees" class="page">
+      <div class="grid2">
+        <div class="card"><h2>Cadastrar funcionário</h2>
+          <form id="empForm" class="form">
+            <div><label>Nome</label><input name="name" required></div>
+            <div><label>Função</label><input name="job" required></div>
+            <div><label>Admissão</label><input name="admission" type="date"></div>
+            <div><button class="btn">Cadastrar</button></div>
+          </form>
+        </div>
+        <div class="card"><h2>Obrigatórios / controle</h2><p class="small">Cada ficha concentra registro do funcionário, certificado de treinamento em higiene na manipulação e carteira sanitária, com suas validades.</p></div>
+      </div>
+      <div id="empCards" class="section grid3"></div>
+    </section>
+
+    <!-- Quality -->
+    <section id="quality" class="page">
+      <div class="grid2">
+        <div class="card"><h2>Registrar temperatura</h2>
+          <form id="tempForm" class="form">
+            <div><label>Tipo</label><select name="type"><option>Equipamento</option><option>Distribuição</option><option>Transporte</option></select></div>
+            <div><label>Local/preparação</label><input name="place" required></div>
+            <div><label>°C</label><input name="value" type="number" step=".1" required></div>
+            <div><label>Status</label><select name="status"><option>Conforme</option><option>Requer análise da RT</option><option>Não conforme</option></select></div>
+            <div class="full"><button class="btn">Registrar</button></div>
+          </form>
+        </div>
+        <div class="card"><h2>Registrar amostra</h2>
+          <form id="sampleForm" class="form">
+            <div><label>Preparação</label><input name="prep" required></div>
+            <div><label>Horário</label><input name="time" type="time" required></div>
+            <div class="full"><button class="btn">Registrar</button></div>
+          </form>
+        </div>
+      </div>
+      <div class="card section"><h2>Histórico recente</h2><div id="qualityList"></div></div>
+    </section>
+
+    <!-- Costs -->
+    <section id="costs" class="page">
+      <div class="grid2">
+        <div class="card"><h2>Custos fixos/operacionais mensais</h2>
+          <form id="fixedForm" class="form">
+            <div><label>Folha / mão de obra</label><input name="labor" type="number" step=".01"></div>
+            <div><label>Aluguel</label><input name="rent" type="number" step=".01"></div>
+            <div><label>Energia + água + gás</label><input name="utilities" type="number" step=".01"></div>
+            <div><label>Impostos/taxas</label><input name="taxes" type="number" step=".01"></div>
+            <div><label>Limpeza/manutenção/outros</label><input name="other" type="number" step=".01"></div>
+            <div><label>Dias operacionais/mês</label><input name="days" type="number"></div>
+            <div class="full"><button class="btn">Atualizar custos</button></div>
+          </form>
+        </div>
+        <div class="card"><h2>Lógica do resultado</h2><p class="small">Receita do dia − custo alimentar estimado − rateio diário dos custos operacionais = resultado operacional estimado. Isso permite comparar os dias sem chamar o indicador de lucro líquido quando ainda faltarem despesas.</p></div>
+      </div>
+      <div class="card section"><h2>Resultado diário</h2><div id="costTable"></div></div>
+    </section>
+
+    <!-- Manager edit -->
+    <section id="managerEdit" class="page">
+      <div class="card"><h2>Dados gerenciais do dia</h2>
+        <form id="dailyForm" class="form">
+          <div><label>Data</label><input name="date" type="date" required></div>
+          <div><label>Refeições/clientes</label><input name="clients" type="number" required></div>
+          <div><label>Preço médio/refeição (R$)</label><input name="price" type="number" step=".01" required></div>
+          <div><label>Outras receitas (R$)</label><input name="otherRevenue" type="number" step=".01" value="0"></div>
+          <div class="full"><button class="btn">Salvar</button></div>
+        </form>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<script type="module" src="/js/app.js"></script>
+</body>
+</html>
