@@ -1,4 +1,4 @@
-import { db } from './db.js';
+import { q, q1 } from './db.js';
 
 /** Data "de hoje" do sistema. No piloto era fixa; mantida configuravel. */
 export const TODAY = process.env.SYSTEM_TODAY || '2026-09-18';
@@ -10,42 +10,44 @@ export function wrap(fn) {
 
 /** Busca ficha tecnica por nome de preparacao (case-insensitive). */
 export function sheetByPrep(prep) {
-  return db.prepare('SELECT * FROM sheets WHERE lower(prep) = lower(?)').get(prep);
+  return q1('SELECT * FROM sheets WHERE lower(prep) = lower($1)', [prep]);
 }
 
 /** Retorna o menu (com itens) de uma data, ou null. */
-export function menuByDate(date) {
-  const menu = db.prepare('SELECT * FROM menus WHERE date = ?').get(date);
+export async function menuByDate(date) {
+  const menu = await q1('SELECT * FROM menus WHERE date = $1', [date]);
   if (!menu) return null;
-  const items = db.prepare('SELECT name FROM menu_items WHERE menu_id = ? ORDER BY position').all(menu.id);
-  return { ...menu, published: !!menu.published, items: items.map(i => i.name) };
+  const items = await q('SELECT name FROM menu_items WHERE menu_id = $1 ORDER BY position', [menu.id]);
+  return { ...menu, published: !!menu.published, items: items.map((i) => i.name) };
 }
 
 /** Quantidade de producao registrada para (date, prep). */
-export function prodQty(date, prep) {
-  const row = db.prepare('SELECT qty FROM production WHERE date = ? AND prep = ?').get(date, prep);
+export async function prodQty(date, prep) {
+  const row = await q1('SELECT qty FROM production WHERE date = $1 AND prep = $2', [date, prep]);
   return row ? Number(row.qty) : 0;
 }
 
 /** Custo alimentar de um dia = soma(custo_ficha * qtd_producao) dos itens do cardapio. */
-export function foodCostFor(date) {
-  const menu = menuByDate(date);
+export async function foodCostFor(date) {
+  const menu = await menuByDate(date);
   if (!menu) return 0;
-  return menu.items.reduce((acc, prep) => {
-    const s = sheetByPrep(prep);
-    return acc + (s ? Number(s.cost) * prodQty(date, prep) : 0);
-  }, 0);
+  let total = 0;
+  for (const prep of menu.items) {
+    const s = await sheetByPrep(prep);
+    if (s) total += Number(s.cost) * (await prodQty(date, prep));
+  }
+  return total;
 }
 
 /** Custos fixos (linha id=1). */
-export function fixedCosts() {
-  return db.prepare('SELECT * FROM fixed_costs WHERE id = 1').get()
+export async function fixedCosts() {
+  return (await q1('SELECT * FROM fixed_costs WHERE id = 1'))
     || { labor: 0, rent: 0, utilities: 0, taxes: 0, other: 0, days: 26 };
 }
 
 /** Rateio diario dos custos operacionais. */
-export function fixedDay() {
-  const f = fixedCosts();
+export async function fixedDay() {
+  const f = await fixedCosts();
   const total = Number(f.labor) + Number(f.rent) + Number(f.utilities) + Number(f.taxes) + Number(f.other);
   return total / Math.max(1, Number(f.days));
 }
@@ -54,10 +56,10 @@ export function fixedDay() {
  * Calcula o resultado de um dia.
  * Para o dia de hoje sem custo alimentar gravado, calcula dinamicamente.
  */
-export function resultFor(d) {
-  const food = (d.food == null && d.date === TODAY) ? foodCostFor(d.date) : Number(d.food || 0);
+export async function resultFor(d) {
+  const food = (d.food == null && d.date === TODAY) ? await foodCostFor(d.date) : Number(d.food || 0);
   const rev = Number(d.clients) * Number(d.price) + Number(d.other_revenue || 0);
-  const op = fixedDay();
+  const op = await fixedDay();
   const res = rev - food - op;
   return {
     food,

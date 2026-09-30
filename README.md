@@ -1,16 +1,16 @@
 # NOUS Excellence
 
 Sistema profissional de gestão para unidades de alimentação (ex.: Torquatu's).
-Evolução do piloto V5 (arquivo único + localStorage) para uma aplicação full-stack
-com backend, banco de dados e autenticação real por papéis.
+Backend Express (serverless-ready), banco Postgres no Supabase, autenticação real
+por papéis e frontend em arquivos separados consumindo a API.
 
 ## Stack
 
-- **Backend:** Node.js + Express (API REST)
-- **Banco:** SQLite via módulo nativo do Node (`node:sqlite`) — sem dependências nativas
+- **Backend:** Node.js + Express — roda como servidor local (dev) ou função serverless (Vercel)
+- **Banco:** Postgres no Supabase (driver `pg`)
 - **Auth:** JWT em cookie httpOnly + senhas com hash (bcryptjs)
-- **Upload:** multer (documentos gravados em disco em `uploads/`)
-- **Frontend:** HTML/CSS/JS separados, consumindo a API
+- **Uploads:** arquivos de documento gravados como `bytea` no Postgres (sem disco — compatível com serverless)
+- **Frontend:** HTML/CSS/JS separados, responsivo, consumindo a API
 
 ## Papéis de acesso
 
@@ -20,18 +20,44 @@ com backend, banco de dados e autenticação real por papéis.
 | **Cozinha** | Operacional: cardápio de hoje, produção, temperaturas/amostras e apenas POPs; fichas sem valores financeiros |
 | **Gestor** | Dashboard de resultado, consulta de cardápios/documentos e dados gerenciais do dia |
 
-As regras de papel são aplicadas **no servidor** (middleware `requireRole`), não só na interface.
+As regras de papel são aplicadas **no servidor** (middleware `requireRole`).
 
-## Como rodar
+## Configuração
+
+1. Crie as tabelas no Supabase (uma vez):
+   - **SQL Editor:** cole `supabase/schema.sql` e rode; ou
+   - **Script:** com `SUPABASE_DB_URL` no `.env`, rode `npm run db:push:supabase`.
+2. Copie `.env.example` para `.env` e preencha:
+   ```
+   SUPABASE_DB_URL=postgresql://postgres.<ref>:<SENHA>@aws-0-<regiao>.pooler.supabase.com:6543/postgres
+   JWT_SECRET=<string longa e aleatoria>
+   NODE_ENV=development
+   ```
+   A `SUPABASE_DB_URL` está em Supabase > Project Settings > Database > Connection string (URI).
+   Para serverless (Vercel), prefira a porta **6543** (pooler em modo Transaction).
+
+## Rodar localmente
 
 ```bash
-npm install          # instala dependências
-cp .env.example .env # ajuste JWT_SECRET em produção
-npm run seed         # popula dados de demonstração (opcional; roda automático se o banco estiver vazio)
-npm start            # sobe em http://localhost:3000
+npm install
+npm run seed:supabase   # popula a demonstracao (DESTRUTIVO: limpa e recria)
+npm start               # http://localhost:3000
 ```
 
-Desenvolvimento com auto-reload: `npm run dev`.
+Dev com auto-reload: `npm run dev`.
+
+Se o banco estiver vazio no primeiro acesso, o app faz um **bootstrap não-destrutivo**
+inserindo a demonstração automaticamente.
+
+## Scripts úteis
+
+| Script | O que faz |
+|--------|-----------|
+| `npm start` | Sobe o servidor local |
+| `npm run dev` | Servidor local com `--watch` |
+| `npm run seed:supabase` | Recria os dados de demonstração (destrutivo) |
+| `npm run db:push:supabase` | Aplica `supabase/schema.sql` (precisa de `SUPABASE_DB_URL`) |
+| `npm run db:check:supabase` | Verifica se as tabelas existem (usa a chave publishable) |
 
 ## Acessos de demonstração
 
@@ -43,25 +69,37 @@ Desenvolvimento com auto-reload: `npm run dev`.
 
 > Troque as senhas e o `JWT_SECRET` antes de qualquer uso real.
 
+## Deploy no Vercel
+
+1. Importe o repositório no Vercel.
+2. Em **Settings > Environment Variables**, adicione:
+   - `SUPABASE_DB_URL` (connection string, porta 6543)
+   - `JWT_SECRET`
+   - `NODE_ENV=production`
+3. Deploy. O `vercel.json` roteia todas as requisições para a função `api/index.js`,
+   que reaproveita o mesmo app Express (`server/app.js`).
+
+O `NODE_ENV=production` ativa o cookie `secure` (HTTPS), que o Vercel já fornece.
+
 ## Estrutura
 
 ```
+api/
+  index.js          # entrypoint serverless do Vercel (embrulha o app Express)
 server/
-  index.js          # app Express, monta rotas e serve o frontend
-  db.js             # conexão SQLite + schema (migrate)
-  seed.js           # dados de demonstração + ensureSeeded
+  app.js            # app Express (API + estatico + bootstrap) — usado por dev e Vercel
+  index.js          # entrypoint de dev local (app.listen)
+  db.js             # pool pg + helpers (q, q1, exec, tx) + type parsers
+  seed.js           # seed destrutivo (manual) + ensureSeeded (bootstrap se vazio)
   auth.js           # JWT, hash, middlewares requireAuth/requireRole
-  lib.js            # cálculos de custo/resultado no servidor
+  lib.js            # cálculos de custo/resultado (async)
   routes/           # auth, menus, sheets, production, docs, employees, quality, costs, daily
-public/
-  login.html        # tela de login
-  index.html        # aplicação
-  css/styles.css
-  js/api.js         # cliente HTTP
-  js/app.js         # lógica da interface
-data/               # banco SQLite (gitignored)
-uploads/            # arquivos de documentos (gitignored)
-docs/               # piloto V5 original, guardado como referência
+public/             # login.html, index.html, css/, js/ (frontend responsivo)
+scripts/            # supabase-migrate.mjs, supabase-check.mjs
+supabase/schema.sql # DDL de todas as tabelas (Postgres)
+tests/validate.mjs  # harness de validacao end-to-end (HTTP)
+docs/               # piloto V5 original (referencia)
+vercel.json         # config de deploy
 ```
 
 ## Lógica de resultado
@@ -71,9 +109,8 @@ docs/               # piloto V5 original, guardado como referência
 O custo alimentar do dia atual é calculado dinamicamente (cardápio × produção × custo da ficha);
 dias passados usam o custo alimentar já registrado.
 
-## Notas para produção
+## Notas de segurança
 
-- Defina `JWT_SECRET` forte e `NODE_ENV=production` (ativa cookie `secure`).
-- Sirva atrás de HTTPS.
-- Faça backup do arquivo `data/nous.db` e da pasta `uploads/`.
-- A data "de hoje" do sistema é `2026-09-18` por padrão (herdada do piloto); ajuste via `SYSTEM_TODAY` no `.env` quando for para uso real.
+- Nunca commite o `.env` (já está no `.gitignore`). A `SUPABASE_DB_URL` e a `service_role key` dão acesso total ao banco.
+- RLS está habilitado nas tabelas; o backend acessa via connection string (não pela chave publishable).
+- Recomendações abertas: rate-limit no login e helmet para cabeçalhos de segurança.

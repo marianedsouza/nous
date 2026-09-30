@@ -70,8 +70,12 @@ create table if not exists public.docs (
   stored_name text,
   mime        text,
   size        bigint,
+  data        bytea,            -- conteudo do arquivo (serverless-friendly)
   created_at  timestamptz not null default now()
 );
+
+-- Para instalacoes que criaram a tabela docs antes da coluna data:
+alter table public.docs add column if not exists data bytea;
 
 -- ---------- Funcionários ----------
 create table if not exists public.employees (
