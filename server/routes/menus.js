@@ -8,12 +8,14 @@ router.use(requireAuth);
 
 // Lista todos os dias do cardapio (com itens)
 router.get('/', wrap(async (req, res) => {
-  const menus = await many(sb.from('menus').select('*').order('date'));
-  const withItems = [];
-  for (const m of menus) {
-    const items = await many(sb.from('menu_items').select('name').eq('menu_id', m.id).order('position'));
-    withItems.push({ id: m.id, date: m.date, published: !!m.published, items: items.map((i) => i.name) });
-  }
+  // Uma unica chamada com join embutido (evita N+1).
+  const menus = await many(sb.from('menus').select('*, menu_items(name, position)').order('date'));
+  const withItems = menus.map((m) => ({
+    id: m.id,
+    date: m.date,
+    published: !!m.published,
+    items: (m.menu_items || []).sort((a, b) => a.position - b.position).map((i) => i.name),
+  }));
   const published = withItems.length > 0 && withItems.every((m) => m.published);
   res.json({ menus: withItems, published });
 }));

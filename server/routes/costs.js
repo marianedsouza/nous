@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { sb, many, must } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
-import { wrap, fixedCosts, resultFor } from '../lib.js';
+import { wrap, fixedCosts, resultForMany } from '../lib.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -23,14 +23,10 @@ router.put('/fixed', requireRole('rt'), wrap(async (req, res) => {
   res.json(await fixedCosts());
 }));
 
-// Resultado diario calculado no servidor
+// Resultado diario calculado no servidor (rateio calculado uma unica vez)
 router.get('/results', wrap(async (req, res) => {
   const days = await many(sb.from('daily').select('*').order('date'));
-  const rows = [];
-  for (const d of days) {
-    rows.push({ date: d.date, clients: d.clients, price: d.price, other_revenue: d.other_revenue, ...(await resultFor(d)) });
-  }
-  res.json(rows);
+  res.json(await resultForMany(days));
 }));
 
 export default router;
