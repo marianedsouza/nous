@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { q, q1, exec } from '../db.js';
+import { sb, many, maybe, single, must } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { wrap } from '../lib.js';
 
@@ -8,6 +8,7 @@ router.use(requireAuth);
 
 // Cozinha nao ve o custo financeiro
 function stripFinancial(sheet, role) {
+  if (!sheet) return sheet;
   if (role === 'cozinha') {
     const { cost, ...rest } = sheet;
     return { ...rest, cost: null };
@@ -16,12 +17,12 @@ function stripFinancial(sheet, role) {
 }
 
 router.get('/', wrap(async (req, res) => {
-  const rows = await q('SELECT * FROM sheets ORDER BY prep');
+  const rows = await many(sb.from('sheets').select('*').order('prep'));
   res.json(rows.map((s) => stripFinancial(s, req.user.role)));
 }));
 
 router.get('/:id', wrap(async (req, res) => {
-  const s = await q1('SELECT * FROM sheets WHERE id = $1', [Number(req.params.id)]);
+  const s = await maybe(sb.from('sheets').select('*').eq('id', Number(req.params.id)));
   if (!s) return res.status(404).json({ error: 'Ficha nao encontrada' });
   res.json(stripFinancial(s, req.user.role));
 }));
@@ -31,29 +32,33 @@ router.post('/', requireRole('rt'), wrap(async (req, res) => {
   if (!prep || !ingredients || !yld || !method) {
     return res.status(400).json({ error: 'Campos obrigatorios: prep, ingredients, yield, method' });
   }
-  const r = await q1(
-    `INSERT INTO sheets (prep, cat, ingredients, yield, cost, method, rev, obs)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
-    [prep, cat || null, ingredients, yld, Number(cost || 0), method, rev || null, obs || null]
-  );
-  res.status(201).json(r);
+  const row = await single(sb.from('sheets').insert({
+    prep, cat: cat || null, ingredients, yield: yld, cost: Number(cost || 0), method, rev: rev || null, obs: obs || null,
+  }).select());
+  res.status(201).json(row);
 }));
 
 router.put('/:id', requireRole('rt'), wrap(async (req, res) => {
   const id = Number(req.params.id);
-  const existing = await q1('SELECT * FROM sheets WHERE id = $1', [id]);
+  const existing = await maybe(sb.from('sheets').select('*').eq('id', id));
   if (!existing) return res.status(404).json({ error: 'Ficha nao encontrada' });
-  const { prep, cat, ingredients, yield: yld, cost, method, rev, obs } = { ...existing, ...req.body };
-  const r = await q1(
-    `UPDATE sheets SET prep=$1, cat=$2, ingredients=$3, yield=$4, cost=$5, method=$6, rev=$7, obs=$8
-     WHERE id=$9 RETURNING *`,
-    [prep, cat, ingredients, yld, Number(cost || 0), method, rev, obs, id]
-  );
-  res.json(r);
+  const b = req.body || {};
+  const patch = {
+    prep: b.prep ?? existing.prep,
+    cat: b.cat ?? existing.cat,
+    ingredients: b.ingredients ?? existing.ingredients,
+    yield: b.yield ?? existing.yield,
+    cost: b.cost != null ? Number(b.cost) : existing.cost,
+    method: b.method ?? existing.method,
+    rev: b.rev ?? existing.rev,
+    obs: b.obs ?? existing.obs,
+  };
+  const row = await single(sb.from('sheets').update(patch).eq('id', id).select());
+  res.json(row);
 }));
 
 router.delete('/:id', requireRole('rt'), wrap(async (req, res) => {
-  await exec('DELETE FROM sheets WHERE id = $1', [Number(req.params.id)]);
+  must(await sb.from('sheets').delete().eq('id', Number(req.params.id)));
   res.json({ ok: true });
 }));
 

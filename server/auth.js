@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { q1 } from './db.js';
+import { sb, maybe } from './db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-secret';
 const COOKIE_NAME = 'nous_token';
@@ -32,7 +32,7 @@ export function clearAuthCookie(res) {
 }
 
 export async function verifyCredentials(email, password) {
-  const user = await q1('SELECT * FROM users WHERE email = $1', [String(email || '').toLowerCase().trim()]);
+  const user = await maybe(sb.from('users').select('*').eq('email', String(email || '').toLowerCase().trim()));
   if (!user) return null;
   if (!bcrypt.compareSync(password || '', user.password_hash)) return null;
   return { id: user.id, name: user.name, email: user.email, role: user.role };

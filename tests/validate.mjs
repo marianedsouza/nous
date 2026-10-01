@@ -139,7 +139,7 @@ async function main() {
   fd.append('expiry', '2027-01-01');
   fd.append('file', bytes, 'teste.pdf');
   const up = await rt.req('POST', '/api/docs', fd, true);
-  check('upload de PDF -> 201 com stored_name', up.status === 201 && !!up.data?.stored_name, `status=${up.status}`);
+  check('upload de PDF -> 201 com arquivo (hasFile)', up.status === 201 && up.data?.hasFile === true, `status=${up.status}`);
   const newId = up.data?.id;
   const fileRes = await rt.req('GET', `/api/docs/${newId}/file`);
   check('download do arquivo -> 200', fileRes.status === 200);

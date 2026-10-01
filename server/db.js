@@ -1,62 +1,48 @@
-import pg from 'pg';
+import { createClient } from '@supabase/supabase-js';
 
-const { Pool, types } = pg;
+const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// --- Ajuste dos parsers de tipo do pg para casar com o que o app espera ---
-// bigint (int8, OID 20) -> number (ids cabem com folga em Number)
-types.setTypeParser(20, (v) => (v === null ? null : parseInt(v, 10)));
-// numeric (OID 1700) -> float (custos, precos)
-types.setTypeParser(1700, (v) => (v === null ? null : parseFloat(v)));
-// date (OID 1082) -> string 'YYYY-MM-DD' (sem virar objeto Date)
-types.setTypeParser(1082, (v) => v);
-
-const connectionString = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
-
-if (!connectionString) {
-  console.warn('[db] SUPABASE_DB_URL nao definido. Configure a connection string do Postgres do Supabase no .env.');
+if (!url || !key) {
+  console.warn('[db] Configure SUPABASE_URL e SUPABASE_SECRET_KEY no .env. O backend usa a secret key (service role).');
 }
 
-// Supabase exige TLS. Pool pequeno por causa do ambiente serverless.
-export const pool = new Pool({
-  connectionString,
-  ssl: connectionString && !/localhost|127\.0\.0\.1/.test(connectionString)
-    ? { rejectUnauthorized: false }
-    : undefined,
-  max: Number(process.env.PG_POOL_MAX || 3),
-  idleTimeoutMillis: 10_000,
+// Cliente com a secret key: ignora RLS (acesso total server-side).
+export const sb = createClient(url || 'http://localhost', key || 'missing', {
+  auth: { persistSession: false, autoRefreshToken: false },
 });
 
-pool.on('error', (err) => console.error('[db] erro no pool:', err.message));
+export const DOCS_BUCKET = process.env.SUPABASE_DOCS_BUCKET || 'docs';
 
-/** Retorna todas as linhas. */
-export async function q(text, params = []) {
-  const r = await pool.query(text, params);
-  return r.rows;
-}
-
-/** Retorna a primeira linha ou null. */
-export async function q1(text, params = []) {
-  const r = await pool.query(text, params);
-  return r.rows[0] || null;
-}
-
-/** Executa e retorna o result cru (rowCount, rows com RETURNING, etc.). */
-export async function exec(text, params = []) {
-  return pool.query(text, params);
-}
-
-/** Executa uma funcao dentro de uma transacao, com um client dedicado. */
-export async function tx(fn) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const result = await fn(client);
-    await client.query('COMMIT');
-    return result;
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
+/** Desembrulha { data, error } do supabase-js, lançando em caso de erro. */
+export function must({ data, error }) {
+  if (error) {
+    const e = new Error(error.message || 'Erro no Supabase');
+    e.status = error.code === 'PGRST116' ? 404 : 500;
+    e.cause = error;
+    throw e;
   }
+  return data;
+}
+
+/** SELECT que retorna várias linhas. Recebe uma query já montada. */
+export async function many(query) {
+  return must(await query);
+}
+
+/** SELECT de uma linha (ou null). Aplica .maybeSingle() se ainda não aplicado. */
+export async function maybe(query) {
+  return must(await query.maybeSingle());
+}
+
+/** INSERT/UPDATE que retorna exatamente uma linha. */
+export async function single(query) {
+  return must(await query.single());
+}
+
+/** COUNT exato (head request). Recebe uma query com { count:'exact', head:true }. */
+export async function countOf(query) {
+  const { count, error } = await query;
+  if (error) { const e = new Error(error.message); e.status = 500; throw e; }
+  return count || 0;
 }

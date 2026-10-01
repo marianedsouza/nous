@@ -1,13 +1,12 @@
 import 'dotenv/config';
 import bcrypt from 'bcryptjs';
-import { pool, q1, exec, tx } from './db.js';
+import { sb, DOCS_BUCKET, must, countOf } from './db.js';
 
 const DEMO_USERS = [
   { name: 'Nutricionista RT', email: 'rt@nous.com', role: 'rt', pass: 'rt123' },
   { name: 'Equipe Cozinha', email: 'cozinha@nous.com', role: 'cozinha', pass: 'cozinha123' },
   { name: 'Gestor', email: 'gestor@nous.com', role: 'gestor', pass: 'gestor123' },
 ];
-
 const MENUS = [
   { date: '2026-09-18', published: true, items: ['Arroz branco', 'Feijão carioca', 'Frango assado', 'Farofa de banana', 'Salada verde', 'Pavê'] },
   { date: '2026-09-19', published: true, items: ['Arroz branco', 'Feijão carioca', 'Carne assada', 'Macarrão', 'Salada verde', 'Gelatina mosaico'] },
@@ -29,109 +28,93 @@ const DAILY = [
   { date: '2026-09-18', clients: 142, price: 39.9, other_revenue: 0, food: null },
 ];
 
-async function insertDemoData(client) {
-  // usuarios
-  for (const u of DEMO_USERS) {
-    await client.query(
-      `INSERT INTO users (name,email,password_hash,role) VALUES ($1,$2,$3,$4)
-       ON CONFLICT (email) DO NOTHING`,
-      [u.name, u.email, bcrypt.hashSync(u.pass, 10), u.role]
-    );
+/** Cria o bucket de storage dos documentos (idempotente). */
+export async function ensureBucket() {
+  const { data } = await sb.storage.getBucket(DOCS_BUCKET);
+  if (!data) {
+    const { error } = await sb.storage.createBucket(DOCS_BUCKET, { public: false });
+    if (error && !/already exists/i.test(error.message)) {
+      console.warn('[storage] nao foi possivel criar o bucket:', error.message);
+    } else {
+      console.log(`[storage] bucket "${DOCS_BUCKET}" pronto.`);
+    }
   }
+}
+
+async function insertDemoData() {
+  // usuarios (upsert por email)
+  const users = DEMO_USERS.map((u) => ({ name: u.name, email: u.email, role: u.role, password_hash: bcrypt.hashSync(u.pass, 10) }));
+  must(await sb.from('users').upsert(users, { onConflict: 'email' }));
+
   // settings
-  await client.query(`INSERT INTO settings (key,value) VALUES ('unit_name','Torquatu''s') ON CONFLICT (key) DO NOTHING`);
+  must(await sb.from('settings').upsert({ key: 'unit_name', value: "Torquatu's" }, { onConflict: 'key' }));
+
   // menus + items
   for (const m of MENUS) {
-    const r = await client.query(
-      `INSERT INTO menus (date,published) VALUES ($1,$2)
-       ON CONFLICT (date) DO UPDATE SET published=EXCLUDED.published RETURNING id`,
-      [m.date, m.published]
-    );
-    const menuId = r.rows[0].id;
-    await client.query('DELETE FROM menu_items WHERE menu_id=$1', [menuId]);
-    for (let i = 0; i < m.items.length; i++) {
-      await client.query('INSERT INTO menu_items (menu_id,name,position) VALUES ($1,$2,$3)', [menuId, m.items[i], i]);
-    }
+    const menu = must(await sb.from('menus').upsert({ date: m.date, published: m.published }, { onConflict: 'date' }).select().single());
+    must(await sb.from('menu_items').delete().eq('menu_id', menu.id));
+    const rows = m.items.map((name, i) => ({ menu_id: menu.id, name, position: i }));
+    must(await sb.from('menu_items').insert(rows));
   }
+
   // sheets
-  for (const s of SHEETS) {
-    await client.query(
-      `INSERT INTO sheets (prep,cat,ingredients,yield,cost,method,rev,obs) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [s.prep, s.cat, s.ingredients, s.yield, s.cost, s.method, s.rev, s.obs]
-    );
-  }
+  must(await sb.from('sheets').insert(SHEETS));
+
   // production
-  for (const [prep, qty] of Object.entries(PROD)) {
-    await client.query(
-      `INSERT INTO production (date,prep,qty) VALUES ($1,$2,$3) ON CONFLICT (date,prep) DO UPDATE SET qty=EXCLUDED.qty`,
-      ['2026-09-18', prep, qty]
-    );
-  }
+  const prodRows = Object.entries(PROD).map(([prep, qty]) => ({ date: '2026-09-18', prep, qty }));
+  must(await sb.from('production').upsert(prodRows, { onConflict: 'date,prep' }));
+
   // docs (metadados demo, sem arquivo)
-  for (const d of DOCS) {
-    await client.query('INSERT INTO docs (type,expiry,filename) VALUES ($1,$2,$3)', [d.type, d.expiry, d.filename]);
-  }
+  must(await sb.from('docs').insert(DOCS.map((d) => ({ type: d.type, expiry: d.expiry, filename: d.filename }))));
+
   // employees
-  await client.query(
-    `INSERT INTO employees (name,job,admission,course,course_expiry,health,health_expiry)
-     VALUES ('Maria da Silva','Cozinheira','2026-02-10',true,'2027-02-10',true,'2026-11-30')`
-  );
+  must(await sb.from('employees').insert({
+    name: 'Maria da Silva', job: 'Cozinheira', admission: '2026-02-10',
+    course: true, course_expiry: '2027-02-10', health: true, health_expiry: '2026-11-30',
+  }));
+
   // temps + samples
-  await client.query(`INSERT INTO temps (dt,type,place,value,status) VALUES ('18/09/2026 11:32','Equipamento','Câmara fria',8.1,'Requer análise da RT')`);
-  await client.query(`INSERT INTO samples (date,prep,time) VALUES ('18/09/2026','Arroz branco','11:20')`);
+  must(await sb.from('temps').insert({ dt: '18/09/2026 11:32', type: 'Equipamento', place: 'Câmara fria', value: 8.1, status: 'Requer análise da RT' }));
+  must(await sb.from('samples').insert({ date: '18/09/2026', prep: 'Arroz branco', time: '11:20' }));
+
   // fixed_costs (linha unica)
-  await client.query(
-    `INSERT INTO fixed_costs (id,labor,rent,utilities,taxes,other,days) VALUES (1,14000,5000,4500,3500,2500,26)
-     ON CONFLICT (id) DO UPDATE SET labor=EXCLUDED.labor,rent=EXCLUDED.rent,utilities=EXCLUDED.utilities,taxes=EXCLUDED.taxes,other=EXCLUDED.other,days=EXCLUDED.days`
-  );
+  must(await sb.from('fixed_costs').upsert({ id: 1, labor: 14000, rent: 5000, utilities: 4500, taxes: 3500, other: 2500, days: 26 }, { onConflict: 'id' }));
+
   // daily
-  for (const d of DAILY) {
-    await client.query(
-      `INSERT INTO daily (date,clients,price,other_revenue,food) VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (date) DO UPDATE SET clients=EXCLUDED.clients,price=EXCLUDED.price,other_revenue=EXCLUDED.other_revenue,food=EXCLUDED.food`,
-      [d.date, d.clients, d.price, d.other_revenue, d.food]
-    );
-  }
+  must(await sb.from('daily').upsert(DAILY, { onConflict: 'date' }));
 }
 
-/**
- * Seed COMPLETO e DESTRUTIVO: limpa as tabelas de dados e recria a demonstracao.
- * Use manualmente: npm run seed:supabase
- */
+/** Seed COMPLETO e DESTRUTIVO. Uso manual: npm run seed:supabase */
 export async function seed({ silent = false } = {}) {
   const log = (...a) => { if (!silent) console.log(...a); };
-  await tx(async (client) => {
-    for (const t of ['menu_items', 'menus', 'sheets', 'production', 'docs', 'employees', 'temps', 'samples', 'daily', 'fixed_costs', 'settings', 'users']) {
-      await client.query(`DELETE FROM ${t}`);
-    }
-    await insertDemoData(client);
-  });
+  // limpa (ordem respeitando FKs: menu_items antes de menus)
+  const byId = ['menu_items', 'menus', 'sheets', 'production', 'docs', 'employees', 'temps', 'samples', 'daily', 'users'];
+  for (const t of byId) must(await sb.from(t).delete().gt('id', 0));
+  must(await sb.from('fixed_costs').delete().gte('id', 0));
+  must(await sb.from('settings').delete().not('key', 'is', null)); // settings usa 'key' como PK
+  await ensureBucket();
+  await insertDemoData();
   log('Seed concluido com sucesso.');
-  log('Usuarios:');
-  log('  RT      -> rt@nous.com / rt123');
-  log('  Cozinha -> cozinha@nous.com / cozinha123');
-  log('  Gestor  -> gestor@nous.com / gestor123');
+  log('Usuarios: rt@nous.com/rt123 · cozinha@nous.com/cozinha123 · gestor@nous.com/gestor123');
 }
 
-/**
- * Bootstrap NAO-destrutivo: so popula a demonstracao se o banco estiver vazio
- * (nenhum usuario). Seguro para rodar no start / cold start serverless.
- */
+/** Bootstrap NAO-destrutivo: popula demonstracao apenas se o banco estiver vazio. */
 export async function ensureSeeded() {
   try {
-    const row = await q1('SELECT COUNT(*)::int AS c FROM users');
-    if (!row || row.c === 0) {
-      await tx((client) => insertDemoData(client));
+    await ensureBucket();
+    const users = await countOf(sb.from('users').select('*', { count: 'exact', head: true }));
+    if (users === 0) {
+      await insertDemoData();
       console.log('[bootstrap] Banco vazio: dados de demonstracao inseridos.');
     }
-    // Garante a linha unica de custos fixos
-    await exec('INSERT INTO fixed_costs (id,labor,rent,utilities,taxes,other,days) VALUES (1,0,0,0,0,0,26) ON CONFLICT (id) DO NOTHING');
+    // garante a linha unica de custos fixos
+    must(await sb.from('fixed_costs').upsert({ id: 1 }, { onConflict: 'id', ignoreDuplicates: true }));
   } catch (err) {
-    console.error('[bootstrap] Falhou (verifique SUPABASE_DB_URL e o schema):', err.message);
+    console.error('[bootstrap] Falhou (verifique SUPABASE_URL/SUPABASE_SECRET_KEY e o schema):', err.message);
   }
 }
 
-// Execucao manual: npm run seed:supabase
+// Execucao manual
 if (process.argv[1] && process.argv[1].endsWith('seed.js')) {
-  seed().then(() => pool.end()).catch((e) => { console.error(e); pool.end(); process.exitCode = 1; });
+  seed().then(() => process.exit(0)).catch((e) => { console.error(e); process.exit(1); });
 }

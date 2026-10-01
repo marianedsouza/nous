@@ -1,4 +1,4 @@
-import { q, q1 } from './db.js';
+import { sb, many, maybe } from './db.js';
 
 /** Data "de hoje" do sistema. No piloto era fixa; mantida configuravel. */
 export const TODAY = process.env.SYSTEM_TODAY || '2026-09-18';
@@ -10,20 +10,20 @@ export function wrap(fn) {
 
 /** Busca ficha tecnica por nome de preparacao (case-insensitive). */
 export function sheetByPrep(prep) {
-  return q1('SELECT * FROM sheets WHERE lower(prep) = lower($1)', [prep]);
+  return maybe(sb.from('sheets').select('*').ilike('prep', prep));
 }
 
 /** Retorna o menu (com itens) de uma data, ou null. */
 export async function menuByDate(date) {
-  const menu = await q1('SELECT * FROM menus WHERE date = $1', [date]);
+  const menu = await maybe(sb.from('menus').select('*').eq('date', date));
   if (!menu) return null;
-  const items = await q('SELECT name FROM menu_items WHERE menu_id = $1 ORDER BY position', [menu.id]);
+  const items = await many(sb.from('menu_items').select('name').eq('menu_id', menu.id).order('position'));
   return { ...menu, published: !!menu.published, items: items.map((i) => i.name) };
 }
 
 /** Quantidade de producao registrada para (date, prep). */
 export async function prodQty(date, prep) {
-  const row = await q1('SELECT qty FROM production WHERE date = $1 AND prep = $2', [date, prep]);
+  const row = await maybe(sb.from('production').select('qty').eq('date', date).eq('prep', prep));
   return row ? Number(row.qty) : 0;
 }
 
@@ -41,7 +41,7 @@ export async function foodCostFor(date) {
 
 /** Custos fixos (linha id=1). */
 export async function fixedCosts() {
-  return (await q1('SELECT * FROM fixed_costs WHERE id = 1'))
+  return (await maybe(sb.from('fixed_costs').select('*').eq('id', 1)))
     || { labor: 0, rent: 0, utilities: 0, taxes: 0, other: 0, days: 26 };
 }
 

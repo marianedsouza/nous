@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { exec } from '../db.js';
+import { sb, must } from '../db.js';
 import { requireAuth, requireRole } from '../auth.js';
 import { wrap, menuByDate, sheetByPrep, prodQty, TODAY } from '../lib.js';
 
@@ -29,11 +29,7 @@ router.get('/:date?', wrap(async (req, res) => {
 router.put('/:date/:prep', requireRole('rt', 'cozinha'), wrap(async (req, res) => {
   const { date, prep } = req.params;
   const qty = Number(req.body?.qty || 0);
-  await exec(
-    `INSERT INTO production (date, prep, qty) VALUES ($1, $2, $3)
-     ON CONFLICT (date, prep) DO UPDATE SET qty = EXCLUDED.qty`,
-    [date, prep, qty]
-  );
+  must(await sb.from('production').upsert({ date, prep, qty }, { onConflict: 'date,prep' }));
   res.json({ ok: true, date, prep, qty });
 }));
 
